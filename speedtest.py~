@@ -1,0 +1,97 @@
+#!/usr/bin/python
+
+import datetime
+import pyk8055
+import sys
+
+def calculate_performance(start, stop, count, do_print = False):
+	time = (stop - start).total_seconds()
+	rate = count / time
+	time_per_cycle = time / count
+	if do_print:
+		print "%i cycles performed in %.2f seconds (%.2f cycles per second, %.5f seconds per cycle)\n" % (count, time, rate, time_per_cycle)
+	return time, rate, time_per_cycle
+
+def main():
+	try:
+		CYCLES = int(sys.argv[1])
+	except:
+		CYCLES = 1000
+	k = pyk8055.k8055(0)
+	k.ClearAllDigital()
+	k.ClearAllAnalog()
+	
+	print "Test 1: Repeatedly setting and clearing all digital outputs at once"
+	active = False
+	start = datetime.datetime.now()
+	for i in range(CYCLES + 1):
+		if active:
+			k.ClearAllDigital()
+		else:
+			k.SetAllDigital()
+		active = not active
+	stop = datetime.datetime.now()
+	calculate_performance(start, stop, i, do_print = True)
+	
+	print "Test 2: Repeatedly setting and clearing one digital output"
+	active = False
+	channel = 1
+	start = datetime.datetime.now()
+	for i in range(CYCLES + 1):
+		if active:
+			k.ClearDigitalChannel(channel)
+			channel = channel + 1 if channel < 8 else 1
+		else:
+			k.SetDigitalChannel(channel)
+		active = not active
+	stop = datetime.datetime.now()
+	calculate_performance(start, stop, i, do_print = True)
+	
+	print "Test 3: Repeatedly setting and clearing all analog outputs at once"
+	active = False
+	start = datetime.datetime.now()
+	for i in range(CYCLES + 1):
+		if active:
+			k.ClearAllAnalog()
+		else:
+			k.SetAllAnalog()
+		active = not active
+	stop = datetime.datetime.now()
+	calculate_performance(start, stop, i, do_print = True)
+	
+	print "Test 4: Repeatedly incrementing and decrementing all analog outputs"
+	value = 0
+	down = False
+	start = datetime.datetime.now()
+	for i in range(CYCLES + 1):
+		k.OutputAllAnalog(value, 255 - value)
+		if down:
+			if value > 0:
+				value = value - 1
+			else:
+				down = False
+				value = value + 1
+		else:
+			if value < 255:
+				value = value + 1
+			else:
+				down = True
+				value = value - 1
+	stop = datetime.datetime.now()
+	calculate_performance(start, stop, i, do_print = True)
+	
+	print "Test 5: Repeatedly reading all digital inputs at once"
+	start = datetime.datetime.now()
+	for i in range(CYCLES + 1):
+		k.ReadAllDigital()
+	stop = datetime.datetime.now()
+	calculate_performance(start, stop, i, do_print = True)
+	
+	print "Test 5: Repeatedly reading all analog inputs at once"
+	start = datetime.datetime.now()
+	for i in range(CYCLES + 1):
+		k.ReadAllAnalog()
+	stop = datetime.datetime.now()
+	calculate_performance(start, stop, i, do_print = True)
+
+main()
